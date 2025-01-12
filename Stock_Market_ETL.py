@@ -27,7 +27,8 @@ class StockMarketPipeline():
 
         daily = requests.get(self.url, params=parameters)
         data = daily.json()
-        print(data)
+
+        return data
 
 
 def main():
@@ -36,9 +37,11 @@ def main():
 
     pipeline = StockMarketPipeline(api_key)
 
-    pipeline.fetch_daily_data("AAPL")
+    data = pipeline.fetch_daily_data("AAPL")
+    print(data['Information'])
+    #daily_data = data['Time Series (Daily)']
+    #print(daily_data['2025-01-10'])
     
-
 if __name__ == "__main__":
     main()
 
