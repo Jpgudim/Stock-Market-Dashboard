@@ -15,17 +15,20 @@ load_dotenv()
 class StockMarketPipeline():
     def __init__(self, api_key):
         self.api_key = api_key
-        self.url = "https://www.alphavantage.co/query"
+        self.base_url = "https://api.polygon.io/v1/open-close"
 
-    def fetch_daily_data(self, symbol):
+    def fetch_daily_data(self, symbol, date):
+
+        stockTicker = symbol
+        date = date
+
+        url = f"{self.base_url}/{stockTicker}/{date}"
 
         parameters = {
-            "function": "TIME_SERIES_DAILY",
-            "symbol": symbol,
             "apikey": self.api_key
         }
 
-        daily = requests.get(self.url, params=parameters)
+        daily = requests.get(url, params=parameters)
         data = daily.json()
 
         return data
@@ -37,11 +40,9 @@ def main():
 
     pipeline = StockMarketPipeline(api_key)
 
-    data = pipeline.fetch_daily_data("AAPL")
-    print(data['Information'])
-    #daily_data = data['Time Series (Daily)']
-    #print(daily_data['2025-01-10'])
-    
+
+    pipeline.fetch_daily_data("AAPL", "2025-01-10")
+   
 if __name__ == "__main__":
     main()
 
