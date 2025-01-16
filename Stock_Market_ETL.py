@@ -40,8 +40,16 @@ def main():
 
     pipeline = StockMarketPipeline(api_key)
 
+    daily = pipeline.fetch_daily_data("AAPL", "2025-01-10")
+    
+    daily_change = daily['close'] - daily['open']
 
-    pipeline.fetch_daily_data("AAPL", "2025-01-10")
+    print(f"Symbol: {daily['symbol']:>13}")
+    print(f"Date: {daily['from']:>15}")
+    print(f"Open: {daily['open']:>15}")
+    print(f"Close: {daily['close']:>14}")
+    print (f"change: {daily_change:>13.2f}")
+    
    
 if __name__ == "__main__":
     main()
