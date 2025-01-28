@@ -50,7 +50,6 @@ class StockMarketPipeline():
         data = []
         
         while current_date <= end:
-            print(current_date)
             data.append(self.fetch_daily_data(symbol, current_date.strftime("%Y-%m-%d")))
             current_date += timedelta(days=1)
         
@@ -65,15 +64,20 @@ def main():
 
     pipeline = StockMarketPipeline(api_key)
 
-    daily = pipeline.fetch_daily_data("AAPL", "2025-01-10")
+    #daily = pipeline.fetch_daily_data("AAPL", "2025-01-10")
     
-    daily_change = daily['close'] - daily['open']
+    #daily_change = daily['close'] - daily['open']
 
-    pipeline.print_daily_data(daily)
+    #pipeline.print_daily_data(daily)
 
-    print (f"change: {daily_change:>13.2f}")
+    #print (f"change: {daily_change:>13.2f}")
 
-    print(pipeline.get_data_range("AAPL", "2025-01-06", "2025-01-08"))
+    data_range = pipeline.get_data_range("AAPL", "2025-01-06", "2025-01-08")
+    open = "open"
+    close = "close"
+    print(f"{data_range[1]['symbol']:<15}{open:<9}{close}")
+    for item in data_range:
+        print(f"{item['from']:<15}{item['open']:<9}{item['close']}")
     
    
 if __name__ == "__main__":
