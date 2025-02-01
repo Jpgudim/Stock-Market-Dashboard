@@ -5,11 +5,14 @@ This program is a data pipeline to extract data from the Alpha Vantage API, tran
 
 """
 
-import pandas as pd
 import requests
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+
+from dash import Dash, html, dash_table
+import pandas as pd
+
 
 load_dotenv()
 
@@ -56,8 +59,25 @@ class StockMarketPipeline():
         
         return data
 
+class Dashboard ():
+    def __init__(self, pipeline):
+        self.app = Dash()
+        self.pipeline = pipeline
+        self.get_data()
+        self.layout()
         
+    def get_data(self):
+        data = self.pipeline.fetch_daily_data("AAPL", "2025-01-10")
+        self.df = pd.DataFrame([data])
 
+    def layout(self):
+        self.app.layout = [
+            html.Div("Stock Market Data"),
+            dash_table.DataTable(data = self.df.to_dict('records'), page_size=10)
+        ]
+
+    def run(self):
+        self.app.run(debug=True)
 
 def main():
     
@@ -65,15 +85,18 @@ def main():
 
     pipeline = StockMarketPipeline(api_key)
 
-    daily = pipeline.fetch_daily_data("AAPL", "2025-01-10")
+    #daily = pipeline.fetch_daily_data("AAPL", "2025-01-10")
     
-    daily_change = daily['close'] - daily['open']
+    #daily_change = daily['close'] - daily['open']
 
-    pipeline.print_daily_data(daily)
+    #pipeline.print_daily_data(daily)
 
-    print (f"change: {daily_change:>13.2f}")
+    #print (f"change: {daily_change:>13.2f}")
 
-    print(pipeline.get_data_range("AAPL", "2025-01-06", "2025-01-08"))
+    #print(pipeline.get_data_range("AAPL", "2025-01-06", "2025-01-08"))
+
+    dashboard = Dashboard(pipeline)
+    dashboard.run()
     
    
 if __name__ == "__main__":
