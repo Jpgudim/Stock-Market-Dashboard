@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
-from dash import Dash, html, dash_table
+from dash import Dash, html, dash_table, dcc, Input, Output
 import pandas as pd
 
 
@@ -21,7 +21,7 @@ class StockMarketPipeline():
         self.api_key = api_key
         self.base_url = "https://api.polygon.io/v1/open-close"
 
-    def fetch_daily_data(self, symbol, date):
+    def get_daily_data(self, symbol, date):
 
         stockTicker = symbol
         date = date
@@ -53,7 +53,8 @@ class StockMarketPipeline():
         data = []
         
         while current_date <= end:
-            data.append(self.fetch_daily_data(symbol, current_date.strftime("%Y-%m-%d")))
+            data.append(self.get_daily_data(symbol, current_date.strftime("%Y-%m-%d")))
+            print(data)
             current_date += timedelta(days=1)
         
         return data
@@ -62,47 +63,98 @@ class Dashboard ():
     def __init__(self, pipeline):
         self.app = Dash()
         self.pipeline = pipeline
-        self.get_data()
+        #self.get_daily_data()
+        #self.get_range_data()
+        self.user_stock = None
+        self.user_date = None
+        self.df_daily = None
+        self.df_range = None
+
         self.layout()
+        self.input_callback()
         
-    def get_data(self):
-        data = self.pipeline.fetch_daily_data("AAPL", "2025-01-10")
-        self.df = pd.DataFrame([data])
+    def get_daily_data(self, stock, date):
+        data = self.pipeline.get_daily_data(stock, date)
+        self.df_daily = pd.DataFrame([data])
+        return self.df_daily
+
+    def get_range_data(self):
+        range_data = self.pipeline.get_data_range("AAPL", "2025-02-11", "2025-02-13")
+        self.df_range = pd.DataFrame([range_data])
+
+    def input_callback(self):
+        @self.app.callback(
+            Output("data-table", "data"),
+            Input("stock-select", "value"),
+            Input("date-select", "value")
+            )
+        def process_input(input_stock, input_date):
+            self.user_stock = input_stock
+            self.user_date = input_date
+
+            return self.get_daily_data(self.user_stock, self.user_date).to_dict('records')
 
     def layout(self):
-        self.app.layout = [
-            html.Div("Stock Market Data"),
-            dash_table.DataTable(data = self.df.to_dict('records'), page_size=10)
-        ]
+        self.app.layout = html.Div([
+            html.Div("Stock Market Data", id='title'),
+            html.Label("Select a stock ticker:"),
+            dcc.Dropdown(
+                id="stock-select",
+                options=["AAPL", "MSFT", "NVDA"],
+                value=""
+            ),
+            html.Label("Select a date:"),
+            dcc.Input(
+                id="date-select",
+                type="text",
+                value=""
+            ),
+            dash_table.DataTable(
+                id="data-table",
+                data = [],
+                page_size=10
+            ),
+        ])
 
     def run(self):
-        self.app.run(debug=True)
+        self.app.run_server(debug=True)
 
 def main():
     
     api_key = os.getenv("api_key") 
 
     pipeline = StockMarketPipeline(api_key)
-
-    #daily = pipeline.fetch_daily_data("AAPL", "2025-01-10")
     
-    #daily_change = daily['close'] - daily['open']
-
-    #pipeline.print_daily_data(daily)
-
-    #print (f"change: {daily_change:>13.2f}")
-
-    #print(pipeline.get_data_range("AAPL", "2025-01-06", "2025-01-08"))
+    # Pipeline Method Testing
+    """
+    daily = pipeline.get_daily_data("AAPL", "2025-01-10")
+    daily_change = daily['close'] - daily['open']
+    pipeline.print_daily_data(daily)
+    print (f"change: {daily_change:>13.2f}")
+    print(pipeline.get_data_range("AAPL", "2025-01-06", "2025-01-08"))
+    """
 
     dashboard = Dashboard(pipeline)
     dashboard.run()
+    
+    # range testing
+    '''
+    range = dashboard.get_range_data()
+
+    for row in range:
+        print(range[row])
+    '''
+
+    
+    # Data Range Testing
+    """
     data_range = pipeline.get_data_range("AAPL", "2025-01-06", "2025-01-08")
     open = "open"
     close = "close"
     print(f"{data_range[1]['symbol']:<15}{open:<9}{close}")
     for item in data_range:
         print(f"{item['from']:<15}{item['open']:<9}{item['close']}")
-    
+    """
    
 if __name__ == "__main__":
     main()
