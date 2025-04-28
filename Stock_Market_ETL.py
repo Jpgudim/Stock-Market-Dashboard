@@ -1,7 +1,14 @@
 """
 This is a basic online dashboard to extract and load stock market data from the Polygon API
 
+To Do:
 
+1. Error checking for ticker input (no caps, ticker doesn't exist, etc.)
+2. Error checking for ticker input (weekend, market closed)
+
+3. Get historical data for stock
+4. Make data more clean
+5. Make dashboard look nice
 
 """
 
@@ -10,13 +17,13 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, date
 
-from dash import Dash, html, dash_table, dcc, Input, Output
+from dash import Dash, html, dash_table, dcc, Input, Output, State
 import pandas as pd
-
-
 
 load_dotenv()
 
+
+#Class that handles the data from the Polygon API
 class StockMarketPipeline():
     def __init__(self, api_key):
         self.api_key = api_key
@@ -38,10 +45,8 @@ class StockMarketPipeline():
         data = daily.json()
 
         return data
-
-
-
-
+    
+#This is the class responsible for the dasboard
 class Dashboard ():
     def __init__(self, pipeline):
         self.app = Dash()
@@ -60,42 +65,69 @@ class Dashboard ():
         self.df_daily = pd.DataFrame([data])
         return self.df_daily
 
-    
     def input_callback(self):
 
         #getting input and output
         @self.app.callback(
             Output("data-table", "data"),
-            Input("stock-select", "value"),
-            Input("date-select", "date")
+            Input("submit-button", "n_clicks"),
+            State("input-stock", "value"),
+            State("input-date", "date")
             )
         
         #processing input and putting into get_daily_data method
-        def process_input(input_stock, input_date):
+        def process_input(n_clicks, input_stock, input_date):
+            
+            #don't process if submit button is not clicked
+            if n_clicks is None:
+                return []
+            
             self.user_stock = input_stock
             self.user_date = input_date
 
-            return self.get_daily_data(self.user_stock, self.user_date).to_dict('records')
-
-    #dashboard layout, convert this to html later for github pages?
+            #collect the data if stock ticker and date are provided
+            if input_stock and input_date:
+                return self.get_daily_data(self.user_stock, self.user_date).to_dict('records')
+            
+            return []
+        
+    #dashboard layout
     def layout(self):
         self.app.layout = html.Div([
-            html.Div("Stock Market Data", id='title'),
-            html.Label("Select a stock ticker:"),
-            dcc.Dropdown(
-                id="stock-select",
-                options=["AAPL", "MSFT", "NVDA"],
-                value=""
+            html.H1("Stock Market Dashboard", id='title'),
+
+            html.Label("Enter a stock ticker:"), 
+            
+            html.Br(),
+
+            dcc.Input(
+                id="input-stock",
+                type="text",
+                placeholder="Example: AAPL"
             ),
+
+            html.Br(),
+            html.Br(),
+
             html.Label("Select a date (yyyy-mm-dd):"),
+
+            html.Br(),
+
             dcc.DatePickerSingle(
-                id="date-select"
+                id="input-date"
             ),
+
+            html.Br(),
+            html.Br(),
+
+            html.Button('submit', id="submit-button"),
+
             dash_table.DataTable(
                 id="data-table",
                 data = [],
                 page_size=10
             ),
+
         ])
 
     def run(self):
