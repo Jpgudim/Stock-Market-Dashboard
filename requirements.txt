@@ -1,0 +1,6 @@
+dash
+plotly
+pandas
+python-dotenv
+requests
+psycopg2

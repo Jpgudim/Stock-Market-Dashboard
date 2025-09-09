@@ -1,50 +1,14 @@
 """
 This is a basic online dashboard to extract and load stock market data from the Polygon API
 
-To Do:
-
-1. Error checking for ticker input (no caps, ticker doesn't exist, etc.)
-2. Error checking for ticker input (weekend, market closed)
-
-3. Get historical data for stock
-4. Make data more clean
-5. Make dashboard look nice
+This file displays the dashboard on the web with dash.
 
 """
 
-import requests
-import os
-from dotenv import load_dotenv
 from datetime import datetime, timedelta, date
-
 from dash import Dash, html, dash_table, dcc, Input, Output, State
 import pandas as pd
-
-load_dotenv()
-
-
-#Class that handles the data from the Polygon API
-class StockMarketPipeline():
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.base_url = "https://api.polygon.io/v1/open-close"
-
-    #Retrieve daily data from API
-    def get_daily_data(self, symbol, date):
-
-        stockTicker = symbol
-        date = date
-
-        url = f"{self.base_url}/{stockTicker}/{date}"
-
-        parameters = {
-            "apikey": self.api_key
-        }
-
-        daily = requests.get(url, params=parameters)
-        data = daily.json()
-
-        return data
+from getData import *
     
 #This is the class responsible for the dasboard
 class Dashboard ():
@@ -134,10 +98,8 @@ class Dashboard ():
         self.app.run_server(debug=True)
 
 def main():
-    
-    api_key = os.getenv("api_key") 
 
-    pipeline = StockMarketPipeline(api_key)
+    pipeline = StockMarketPipeline()
 
     dashboard = Dashboard(pipeline)
 
