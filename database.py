@@ -8,13 +8,35 @@ This file handles the database connection.
 import psycopg2
 from config import database_url
 
-def test_connection():
-
+def get_connection():
     conn = psycopg2.connect(database_url)
-                
-    print("Connection successful")
-        
+    return conn
+                        
+def create_table():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS stock_prices (
+            id SERIAL PRIMARY KEY,
+            ticker VARCHAR(5),
+            date DATE,
+            open_price DECIMAL(10, 2),
+            high_price DECIMAL(10, 2),
+            low_price DECIMAL(10, 2),
+            close_price DECIMAL(10,2),
+            volume BIGINT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(ticker, date)
+        );
+    """)
+    
+    conn.commit()
+
+    cursor.close()
     conn.close()
+    print ("Table created successfully")
 
 if __name__ == "__main__":
-    test_connection()
+    get_connection()
+    create_table()

@@ -23,7 +23,7 @@ class StockMarketPipeline():
         url = f"{self.base_url}/{stockTicker}/{date}"
 
         parameters = {
-            "api_key": self.api_key
+            "apikey": self.api_key
         }
 
         daily = requests.get(url, params=parameters)

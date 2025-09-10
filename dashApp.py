@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, date
 from dash import Dash, html, dash_table, dcc, Input, Output, State
 import pandas as pd
 from getData import *
+from config import polygon_api_key
     
 #This is the class responsible for the dasboard
 class Dashboard ():
