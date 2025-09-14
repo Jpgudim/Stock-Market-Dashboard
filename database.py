@@ -55,9 +55,16 @@ def populate_database(ticker, pastDays):
     
         api_data = pipeline.get_daily_data(ticker, dateString)
 
+        if api_data.get('open') is None:
+            print(f"No data available for {ticker} on {dateString}")
+            currentDate = currentDate - timedelta(days=1)
+            time.sleep(13)
+            continue
+
         cursor.execute("""
             INSERT INTO stock_prices (ticker, date, open_price, high_price, low_price, close_price, volume)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)     
+            VALUES (%s, %s, %s, %s, %s, %s, %s)  
+            ON CONFLICT (ticker, date) DO NOTHING;   
         """, (
             ticker, 
             currentDate, 
@@ -68,17 +75,35 @@ def populate_database(ticker, pastDays):
             api_data.get('volume') 
         ))
 
+        print("Data inserted for date:", currentDate)
+
         currentDate = currentDate - timedelta(days=1)
 
         #API limit is 5 requests per minute
-        time.sleep(15) 
+        time.sleep(13) 
 
     conn.commit()
     cursor.close()
     conn.close()
     print ("Data added successfully")
 
+
+def query_database(ticker):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT * FROM stock_prices
+        WHERE ticker = %s
+        ORDER BY date DESC;
+        """, (ticker,))
+    
+    stock_data = cursor.fetchall()
+    cursor.close()
+    conn.close()  
+    return stock_data
+
 if __name__ == "__main__":
     get_connection()
     #create_table()
-    populate_database("AAPL", 2)
+    populate_database("AAPL", 30)
