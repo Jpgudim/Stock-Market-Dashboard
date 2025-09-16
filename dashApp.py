@@ -12,6 +12,8 @@ import pandas as pd
 from getData import *
 from config import polygon_api_key
 import database
+import json
+from dash.dependencies import ALL
     
 #This is the class responsible for the dasboard
 class Dashboard ():
@@ -46,7 +48,7 @@ class Dashboard ():
         @self.app.callback(
             Output("data-table", "data"),
             Input("submit-button", "n_clicks"),
-            Input("database-button", "n_clicks"),
+            Input({"type": "ticker-button", "index":ALL}, "n_clicks"),
             State("input-stock", "value"),
             State("input-date", "date")
             )
@@ -55,7 +57,7 @@ class Dashboard ():
         def process_input(submit_clicks, database_clicks, input_stock, input_date):
             ctx = dash.callback_context
 
-            if not ctx.triggered or not input_stock:
+            if not ctx.triggered:
                 return []
             
             button_id = ctx.triggered[0]['prop_id'].split('.')[0]
@@ -64,50 +66,57 @@ class Dashboard ():
 
                 return self.get_daily_data(input_stock, input_date).to_dict('records')
             
-            elif button_id == "database-button" and input_stock:
-
-                return self.get_historical_data(input_stock).to_dict('records')
+            if button_id.startswith("{"): 
+                button_info = json.loads(button_id.replace("'", '"'))
+                ticker = button_info['index']
+                return self.get_historical_data(ticker).to_dict('records')
             
             return []
         
     #dashboard layout
     def layout(self):
+        tickers = database.get_all_tickers()
+        ticker_buttons = [html.Button(ticker, id={'type': 'ticker-button', 'index': ticker}, n_clicks=0, style={'margin': '1px'}) for ticker in tickers]
+
         self.app.layout = html.Div([
             html.H1("Stock Market Dashboard", id='title'),
-
-            html.Label("Enter a stock ticker:"), 
-        
             html.Br(),
-
-            dcc.Input(
-                id="input-stock",
-                type="text",
-                placeholder="Example: AAPL"
-            ),
-
-            html.Br(),
-            html.Br(),
-
-            html.Label("Select a date (yyyy-mm-dd):"),
-
-            html.Br(),
-
-            dcc.DatePickerSingle(
-                id="input-date"
-            ),
-
-            html.Br(),
-            html.Br(),
-
-            html.Button('submit', id="submit-button"),
-            html.Button('Show database', id="database-button"),
-
-            dash_table.DataTable(
-                id="data-table",
-                data = [],
-                page_size=10
-            ),
-
+            html.Div([
+                html.Div([
+                    html.H3("Quick lookup:"),
+                    html.Label("Enter a stock ticker:"), 
+                    html.Br(),
+                    dcc.Input(
+                        id="input-stock",
+                        type="text",
+                        placeholder="Example: AAPL"
+                    ),
+                    html.Br(),
+                    html.Br(),
+                    html.Label("Select a Date (yyyy-mm-dd):"),
+                    html.Br(),
+                    dcc.DatePickerSingle(
+                        id="input-date"
+                    ),
+                    html.Br(),
+                    html.Br(),
+                    html.Button('Submit', id="submit-button"),
+                    html.Br(),
+                    html.Br(),
+                    html.Br(),
+                    html.Br(),
+                    html.Br(),
+                    html.H3("Historical Database Data:"),
+                    html.Div(ticker_buttons),
+                ], style={'flex': '1'}),
+                html.Div([
+                    dash_table.DataTable(
+                        id="data-table",
+                        data = [],
+                        page_size=15
+                    ),
+                ], style={'flex': '1'}),
+            ], style={'display': 'flex'}),
         ])
 
     def run(self):

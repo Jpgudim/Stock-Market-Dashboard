@@ -103,7 +103,24 @@ def query_database(ticker):
     conn.close()  
     return stock_data
 
+def get_all_tickers():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT DISTINCT ticker FROM stock_prices;")
+
+    tickers = [row[0] for row in cursor.fetchall()]
+
+    cursor.close()
+    conn.close()
+    return tickers
+
 if __name__ == "__main__":
     get_connection()
     #create_table()
-    populate_database("AAPL", 30)
+    #populate_database("AAPL", 30)
+    #populate_database("MSFT", 30)
+    #populate_database("GOOG", 30)
+    #populate_database("META", 30)
+    #populate_database("NVDA", 30)
+
