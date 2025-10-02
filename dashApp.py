@@ -46,7 +46,7 @@ class Dashboard ():
 
         #getting input and output
         @self.app.callback(
-            Output("data-table", "data"),
+            Output("output-data", "children"),
             Input("submit-button", "n_clicks"),
             Input({"type": "ticker-button", "index":ALL}, "n_clicks"),
             State("input-stock", "value"),
@@ -58,20 +58,51 @@ class Dashboard ():
             ctx = dash.callback_context
 
             if not ctx.triggered:
-                return []
+                return html.Div("", id="no-input")
             
             button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
             if button_id == "submit-button" and input_stock and input_date:
 
-                return self.get_daily_data(input_stock, input_date).to_dict('records')
-            
+                df = self.get_daily_data(input_stock, input_date)
+
+                row = df.iloc[0].to_dict()
+
+                if df.empty:
+                    return [html.Div("No data found for the given stock and/or date.")]
+
+                row = df.iloc[0].to_dict()
+
+                formatted_data = html.Div([
+                    html.H3(f"Stock: {input_stock.upper()}"),
+                    html.H4(f"Date: {row.get('from', input_date)}"),
+                    html.P(f"Open Price: {row.get('open', 'N/A')}"),
+                    html.P(f"High Price: {row.get('high', 'N/A')}"),
+                    html.P(f"Low Price: {row.get('low', 'N/A')}"),
+                    html.P(f"Close Price: {row.get('close', 'N/A')}"),
+                    html.P(f"Volume: {row.get('volume', 'N/A')}")
+                ])
+                return formatted_data
+
             if button_id.startswith("{"): 
                 button_info = json.loads(button_id.replace("'", '"'))
                 ticker = button_info['index']
-                return self.get_historical_data(ticker).to_dict('records')
-            
-            return []
+                hist_df = self.get_historical_data(ticker)
+                if hist_df.empty:
+                    return [html.Div("No historical data found for the selected ticker.")]
+                cols = [{"name": c, "id": c} for c in hist_df.columns]
+                table = dash_table.DataTable(
+                    data=hist_df.to_dict('records'),
+                    columns=cols,
+                    page_size=10,
+                    style_table={'overflowX': 'auto'},
+                    style_cell={'textAlign': 'center', 'padding': '6px'}
+                )
+                return table
+
+            return html.Div("No valid input detected.", id="no-valid-input")
+
+            #to do: add error handling based on if date or sock is missing
         
     #dashboard layout
     def layout(self):
@@ -110,11 +141,7 @@ class Dashboard ():
                     html.Div(ticker_buttons),
                 ], style={'flex': '1'}),
                 html.Div([
-                    dash_table.DataTable(
-                        id="data-table",
-                        data = [],
-                        page_size=15
-                    ),
+                    html.Div(id="output-data"),
                 ], style={'flex': '1'}),
             ], style={'display': 'flex'}),
         ])

@@ -1,6 +1,6 @@
-dash
-plotly
-pandas
-python-dotenv
-requests
-psycopg2
+dash==2.11.1
+plotly==5.11.0
+pandas==1.5.3
+python-dotenv==0.21.0
+requests==2.28.1
+psycopg2==2.9.5
