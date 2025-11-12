@@ -14,6 +14,7 @@ from config import polygon_api_key
 import database
 import json
 from dash.dependencies import ALL
+import time
     
 #This is the class responsible for the dasboard
 class Dashboard ():
@@ -25,9 +26,15 @@ class Dashboard ():
         self.df_daily = None
         self.df_range = None
 
+        # caching tickers list to avoid multiple API calls
+        self.cached_tickers = None
+
         self.layout()
         self.input_callback()
     
+    # turning debug mode off to avoid multiple API calls when fetching polygon tickers
+    def run(self):
+        self.app.run(debug=False)
     
     #Using get_daily_data method and converting to pandas dataframe
     def get_daily_data(self, stock, date):
@@ -41,6 +48,64 @@ class Dashboard ():
         columns = ['id', 'ticker', 'date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume', 'created_at']
         df = pd.DataFrame(data, columns=columns)
         return df
+    
+    def fetch_polygon_tickers(self):
+        
+        if self.cached_tickers:
+            return self.cached_tickers
+
+        all_tickers = []
+
+        try: 
+
+            cs_tickers = self.fetch_by_type("CS")
+            all_tickers.extend(cs_tickers)
+
+            time.sleep(13)
+
+            etf_tickers = self.fetch_by_type("ETF")
+            all_tickers.extend(etf_tickers)
+
+            self.cached_tickers = sorted(all_tickers)
+            return all_tickers
+    
+        except Exception as e:
+            print(f"Error fetching tickers: {e}")
+            return []
+        
+    def fetch_by_type(self, ticker_type):
+
+        url = "https://api.polygon.io/v3/reference/tickers"
+
+        params = {
+            "apiKey": polygon_api_key,
+            "market": "stocks",
+            "active": "true",
+            "type": ticker_type,
+            "limit": 1000
+        }
+
+        tickers = []
+
+        try:   
+            response = requests.get(url, params=params)
+            data = response.json()
+
+            print(f"Status Code: {response.status_code}")
+            print(f"Response keys: {data.keys()}")
+
+            if response.status_code == 200 and 'results' in data:
+                for ticker_data in data['results']:
+                    ticker = ticker_data['ticker']
+                    tickers.append(ticker)
+
+            else:
+                print(f"API Error for {ticker_type}: {data.get('error', 'Unknown')}")
+
+        except Exception as e:
+            print(f"Error fetching {ticker_type} tickers: {e}")
+                
+        return tickers
 
     def input_callback(self):
 
@@ -107,7 +172,17 @@ class Dashboard ():
     #dashboard layout
     def layout(self):
         tickers = database.get_all_tickers()
-        ticker_buttons = [html.Button(ticker, id={'type': 'ticker-button', 'index': ticker}, n_clicks=0, style={'margin': '1px'}) for ticker in tickers]
+        ticker_buttons = [html.Button(
+            ticker, 
+            id={'type': 'ticker-button', 'index': ticker}, 
+            n_clicks=0, 
+            style={'margin': '1px'}
+            ) for ticker in tickers
+            ]
+
+        available_tickers = self.fetch_polygon_tickers()
+        ticker_options = [{'label': ticker, 'value': ticker} for ticker in available_tickers]
+ 
 
         self.app.layout = html.Div([
             html.H1("Stock Market Dashboard", id='title'),
@@ -117,10 +192,13 @@ class Dashboard ():
                     html.H3("Quick lookup:"),
                     html.Label("Enter a stock ticker:"), 
                     html.Br(),
-                    dcc.Input(
+                    dcc.Dropdown(
                         id="input-stock",
-                        type="text",
-                        placeholder="Example: AAPL"
+                        options=ticker_options,
+                        placeholder="Example: AAPL",
+                        searchable=True,
+                        clearable=True,
+                        style={'width': '300px'}
                     ),
                     html.Br(),
                     html.Br(),
@@ -147,7 +225,7 @@ class Dashboard ():
         ])
 
     def run(self):
-        self.app.run_server(debug=True)
+        self.app.run(debug=True)
 
 def main():
 
