@@ -5,13 +5,17 @@ This file handles the interaction with the database.
 
 """
 
+import os
+from dotenv import load_dotenv
 import psycopg2
-from config import database_url
-from getData import StockMarketPipeline
+from get_data import StockMarketPipeline
 from datetime import date, timedelta
 import time
 
+load_dotenv()
+
 def get_connection():
+    database_url = os.getenv("database_url")
     conn = psycopg2.connect(database_url)
     return conn
                         

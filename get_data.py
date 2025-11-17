@@ -5,13 +5,16 @@ This file calls the API to retrieve data.
 
 """
 
+import os
 import requests
-from config import polygon_api_key
+from dotenv import load_dotenv
+
+load_dotenv()
 
 #Class that handles the data from the Polygon API
 class StockMarketPipeline():
     def __init__(self):
-        self.api_key = polygon_api_key
+        self.api_key = os.getenv("polygon_api_key")
         self.base_url = "https://api.polygon.io/v1/open-close"
 
     #Retrieve daily data from API

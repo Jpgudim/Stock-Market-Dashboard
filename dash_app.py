@@ -9,9 +9,8 @@ from datetime import datetime, timedelta, date
 import dash
 from dash import Dash, html, dash_table, dcc, Input, Output, State
 import pandas as pd
-from getData import *
-from config import polygon_api_key
-import database
+from get_data import *
+import data_base
 import json
 from dash.dependencies import ALL
 import time
@@ -44,71 +43,30 @@ class Dashboard ():
     
 
     def get_historical_data(self, stock):
-        data = database.query_database(stock)
+        data = data_base.query_database(stock)
         columns = ['id', 'ticker', 'date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume', 'created_at']
         df = pd.DataFrame(data, columns=columns)
         return df
     
     def fetch_polygon_tickers(self):
-        
+        # loads tickers from JSON file
+
         if self.cached_tickers:
             return self.cached_tickers
-
-        all_tickers = []
-
-        try: 
-
-            cs_tickers = self.fetch_by_type("CS")
-            all_tickers.extend(cs_tickers)
-
-            time.sleep(13)
-
-            etf_tickers = self.fetch_by_type("ETF")
-            all_tickers.extend(etf_tickers)
-
-            self.cached_tickers = sorted(all_tickers)
-            return all_tickers
     
-        except Exception as e:
-            print(f"Error fetching tickers: {e}")
+        try:
+            with open('tickers.json', 'r') as f:
+                self.cached_tickers = json.load(f)
+                return self.cached_tickers
+        
+        except FileNotFoundError:
+            print("tickers.json not found. Make sure to run fetch_tickers.py first.")
             return []
         
-    def fetch_by_type(self, ticker_type):
+        return self.cached_tickers  
 
-        url = "https://api.polygon.io/v3/reference/tickers"
-
-        params = {
-            "apiKey": polygon_api_key,
-            "market": "stocks",
-            "active": "true",
-            "type": ticker_type,
-            "limit": 1000
-        }
-
-        tickers = []
-
-        try:   
-            response = requests.get(url, params=params)
-            data = response.json()
-
-            print(f"Status Code: {response.status_code}")
-            print(f"Response keys: {data.keys()}")
-
-            if response.status_code == 200 and 'results' in data:
-                for ticker_data in data['results']:
-                    ticker = ticker_data['ticker']
-                    tickers.append(ticker)
-
-            else:
-                print(f"API Error for {ticker_type}: {data.get('error', 'Unknown')}")
-
-        except Exception as e:
-            print(f"Error fetching {ticker_type} tickers: {e}")
-                
-        return tickers
 
     def input_callback(self):
-
         #getting input and output
         @self.app.callback(
             Output("output-data", "children"),
@@ -171,7 +129,7 @@ class Dashboard ():
         
     #dashboard layout
     def layout(self):
-        tickers = database.get_all_tickers()
+        tickers = data_base.get_all_tickers()
         ticker_buttons = [html.Button(
             ticker, 
             id={'type': 'ticker-button', 'index': ticker}, 
