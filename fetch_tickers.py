@@ -28,7 +28,7 @@ def fetch_by_type(ticker_type):
             print(f"  Page {page} - Requesting: {url[:80]}...")
 
             if page > 1:
-                response = requests.get(url, params={ "apiKey": polygon_api_key })
+                response = requests.get(url, params={ "apiKey": os.getenv("polygon_api_key") })
             else:
                 response = requests.get(url, params=params)
 

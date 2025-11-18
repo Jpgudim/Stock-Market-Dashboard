@@ -31,13 +31,15 @@ class Dashboard ():
         self.layout()
         self.input_callback()
     
-    # turning debug mode off to avoid multiple API calls when fetching polygon tickers
-    def run(self):
-        self.app.run(debug=False)
-    
-    #Using get_daily_data method and converting to pandas dataframe
     def get_daily_data(self, stock, date):
+        #Using get_daily_data method and converting to pandas dataframe
+
         data = self.pipeline.get_daily_data(stock, date)
+
+        # Return empty DataFrame on error
+        if data is None or data.get('status') == 'ERROR':
+            return pd.DataFrame()  
+
         self.df_daily = pd.DataFrame([data])
         return self.df_daily
     
@@ -47,7 +49,38 @@ class Dashboard ():
         columns = ['id', 'ticker', 'date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume', 'created_at']
         df = pd.DataFrame(data, columns=columns)
         return df
-    
+
+    def get_most_recent_data(self, stock, requested_date):
+        #Fallback to get the most recent available data before the requested date
+
+        requested_dt = datetime.strptime(requested_date, '%Y-%m-%d')
+
+        #Trying up to 7 days back
+        for days_back in range(0, 8):
+            fallback_date = requested_dt - timedelta(days=days_back)
+            fallback_date_str = fallback_date.strftime('%Y-%m-%d')
+        
+            df = self.get_daily_data(stock, fallback_date_str)
+        
+            if not df.empty and df.iloc[0].get('open') is not None:
+                row = df.iloc[0].to_dict()
+            
+                formatted_data = html.Div([
+                    html.H3(f"Stock: {stock.upper()}"),
+                    html.H4(f"Date: {row.get('from', fallback_date_str)}"),
+                    html.P(f"No data available for {requested_date}. Showing most recent data."), 
+                    html.P(f"Open Price: {row.get('open', 'N/A')}"),
+                    html.P(f"High Price: {row.get('high', 'N/A')}"),
+                    html.P(f"Low Price: {row.get('low', 'N/A')}"),
+                    html.P(f"Close Price: {row.get('close', 'N/A')}"),
+                    html.P(f"Volume: {row.get('volume', 'N/A')}")
+                ])
+                return formatted_data
+        return html.Div([
+            html.H3(f"Stock: {stock.upper()}"),
+            html.P(f"No data found for {requested_date} or the previous 7 days.")
+        ])
+
     def fetch_polygon_tickers(self):
         # loads tickers from JSON file
 
@@ -68,6 +101,7 @@ class Dashboard ():
 
     def input_callback(self):
         #getting input and output
+
         @self.app.callback(
             Output("output-data", "children"),
             Input("submit-button", "n_clicks"),
@@ -85,14 +119,18 @@ class Dashboard ():
             
             button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-            if button_id == "submit-button" and input_stock and input_date:
+            if button_id == "submit-button" and input_stock:   
 
+                # If no date selected, use today's date and get most recent data
+                if not input_date:
+                    today = date.today().strftime('%Y-%m-%d')
+                    return self.get_most_recent_data(input_stock, today)
+
+                # Date was selected, try to get data for that specific date
                 df = self.get_daily_data(input_stock, input_date)
 
-                row = df.iloc[0].to_dict()
-
-                if df.empty:
-                    return [html.Div("No data found for the given stock and/or date.")]
+                if df.empty or df.iloc[0].get('open') is None:  
+                    return self.get_most_recent_data(input_stock, input_date)
 
                 row = df.iloc[0].to_dict()
 
@@ -124,11 +162,10 @@ class Dashboard ():
                 return table
 
             return html.Div("No valid input detected.", id="no-valid-input")
-
-            #to do: add error handling based on if date or sock is missing
         
-    #dashboard layout
     def layout(self):
+        #dashboard layout
+
         tickers = data_base.get_all_tickers()
         ticker_buttons = [html.Button(
             ticker, 

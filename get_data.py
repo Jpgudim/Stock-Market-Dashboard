@@ -20,16 +20,28 @@ class StockMarketPipeline():
     #Retrieve daily data from API
     def get_daily_data(self, symbol, date):
 
-        stockTicker = symbol
-        date = date
-
-        url = f"{self.base_url}/{stockTicker}/{date}"
+        url = f"{self.base_url}/{symbol}/{date}"
 
         parameters = {
             "apikey": self.api_key
         }
 
-        daily = requests.get(url, params=parameters)
-        data = daily.json()
+        try:
+            response = requests.get(url, params=parameters, timeout=10)
+            response.raise_for_status
+                
+            data = response.json()
 
-        return data
+            if data.get('status') == 'ERROR':
+                print(f"API Error: {data.get('error', 'Unknown error')}")
+                return None
+            
+            return data
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed for {symbol} on {date}: {e}")
+            return None
+        
+        except ValueError as e:
+            print(f"Invalid JSON response: {e}")
+            return None
