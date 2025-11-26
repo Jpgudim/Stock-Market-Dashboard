@@ -10,7 +10,6 @@ import dash
 from dash import Dash, html, dash_table, dcc, Input, Output, State
 import pandas as pd
 from get_data import *
-import data_base
 import json
 from dash.dependencies import ALL
 import time
@@ -23,7 +22,6 @@ class Dashboard ():
         self.user_stock = None
         self.user_date = None
         self.df_daily = None
-        self.df_range = None
 
         # caching tickers list to avoid multiple API calls
         self.cached_tickers = None
@@ -105,13 +103,12 @@ class Dashboard ():
         @self.app.callback(
             Output("output-data", "children"),
             Input("submit-button", "n_clicks"),
-            Input({"type": "ticker-button", "index":ALL}, "n_clicks"),
             State("input-stock", "value"),
             State("input-date", "date")
             )
         
         #processing input and putting into get_daily_data method
-        def process_input(submit_clicks, database_clicks, input_stock, input_date):
+        def process_input(submit_clicks, input_stock, input_date):
             ctx = dash.callback_context
 
             if not ctx.triggered:
@@ -145,40 +142,14 @@ class Dashboard ():
                 ])
                 return formatted_data
 
-            if button_id.startswith("{"): 
-                button_info = json.loads(button_id.replace("'", '"'))
-                ticker = button_info['index']
-                hist_df = self.get_historical_data(ticker)
-                if hist_df.empty:
-                    return [html.Div("No historical data found for the selected ticker.")]
-                cols = [{"name": c, "id": c} for c in hist_df.columns]
-                table = dash_table.DataTable(
-                    data=hist_df.to_dict('records'),
-                    columns=cols,
-                    page_size=10,
-                    style_table={'overflowX': 'auto'},
-                    style_cell={'textAlign': 'center', 'padding': '6px'}
-                )
-                return table
-
             return html.Div("No valid input detected.", id="no-valid-input")
         
     def layout(self):
         #dashboard layout
 
-        tickers = data_base.get_all_tickers()
-        ticker_buttons = [html.Button(
-            ticker, 
-            id={'type': 'ticker-button', 'index': ticker}, 
-            n_clicks=0, 
-            style={'margin': '1px'}
-            ) for ticker in tickers
-            ]
-
         available_tickers = self.fetch_polygon_tickers()
         ticker_options = [{'label': ticker, 'value': ticker} for ticker in available_tickers]
  
-
         self.app.layout = html.Div([
             html.H1("Stock Market Dashboard", id='title'),
             html.Br(),
@@ -205,13 +176,6 @@ class Dashboard ():
                     html.Br(),
                     html.Br(),
                     html.Button('Submit', id="submit-button"),
-                    html.Br(),
-                    html.Br(),
-                    html.Br(),
-                    html.Br(),
-                    html.Br(),
-                    html.H3("Historical Database Data:"),
-                    html.Div(ticker_buttons),
                 ], style={'flex': '1'}),
                 html.Div([
                     html.Div(id="output-data"),
@@ -225,9 +189,7 @@ class Dashboard ():
 def main():
 
     pipeline = StockMarketPipeline()
-
     dashboard = Dashboard(pipeline)
-
     dashboard.run()
    
 if __name__ == "__main__":
