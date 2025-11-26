@@ -3,6 +3,7 @@ This is a basic online dashboard to extract and load stock market data from the 
 
 This file handles the interaction with the database.
 
+This file is no longer used for the current version of the project.
 """
 
 import os
