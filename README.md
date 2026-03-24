@@ -43,6 +43,6 @@ https://massive.com/
 ## Usage
 Run the dashboard
 ```
-python data_base.py
+python dash_app.py
 ```
 Then open your browser to http://127.0.0.1:8050/
